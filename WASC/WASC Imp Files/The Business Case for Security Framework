@@ -1,0 +1,38 @@
+ One of the reasons why vulnerabilities are still common-place is because new generations of developers are making the same mistakes. I don't put the majority of the blame on them because they may not know any better. Many of the people that I know who've attended college don't have training for programming securely and the few that do only have these classes available in grad school (and this isn't the norm). Even then these courses are only covering buffer overflows and don't get to cover some of the popular vulnerability types such as sql injection or xss. For starters the majority of programmers don't have masters degree's or access to secure development training, and need direction on security practices which can take months, even years to develop on their own. The problem is that until they have these security skill sets they may be writing vulnerable code.
+
+I've been in the IT industry for many years and find that everyone states focusing on education, performing security assessments (post production), and (depending on the situation) using a tool or two as the most acceptable solutions. I am all for education, but as stated above it takes time and money, and until these people are properly trained they can open up your application to risk. Admittedly they open your application to stability and performance problems but let's stick to security for the time being. Having been involved with finding people with security knowledge/training, I can tell you that finding people fitting into this group is extremely difficult and can be impossible when you're trying to find 5+ people. From my experience managers seeking people with this skill set find themselves not finding either the amount of heads to fill their headcount, or people with the right skill and end up hiring ok people. One can argue that this could be just bad management but those of you who've been in similar situations know each one is different and that you can't stop business from happening.
+
+Logical vulnerabilities are custom to each application type, however vulnerabilities such as xss, sql injection, overflows, and format string vulnerabilities are all caused mostly in the same fashion. This means that the developers writing the vulnerable code are performing the same sorts of mistakes until they've learned to not make them. Let's say that application X needs to display some data that may possibly come from a source modifiable by the user. The developer may not be aware of Cross-site Scripting or how to properly filter it. Lets assume no xss filtering is performed (which is often the case) and vulnerable code is pushed into production. Later on a bug report is filed explaining that the application is vulnerable to xss. At this point the developer will need to spend time learning about xss and may implement a filter, however may implement it poorly allowing for evasion of the provided fix. This ends up costing you more in development costs in the long run and in certain circumstances could result in a later patch overwriting a previous fix, causing a vulnerability to be reintroduced. This is actually a very common situation in relation to fixing security related defects. You have the issue of people within development not being made aware of these sorts of issues, as well as poorly implementing fixes. This is where security/input/output validation frameworks come into play.
+
+How does one utilize a security validation framework in the development process? For starters you identify the types of tasks involved within your application that could pose risk. Below is a short list of such common risks.
+* Grabbing User Input
+* Reading/Writing to Files
+* Displaying Data
+* Using SQL
+* Performing important application functionality. This could be a website function displaying sensitive user data, or buying an item.
+
+Next identify common vulnerability types to each risky task, as well as best practice approaches to locking them down. This list should be co-created with a senior member of your development team, and security consultant of some sort.
+* Grabbing User Input: Utilize strong data types when applicable. Identify and enforce data length restrictions. Identify and enforce acceptable character white lists when utilizing strings.
+
+* Reading/Writing to Files: Perform and enforce lowest right permissions checking to ensure only the appropriate users or applications have access to what is needed.
+
+* Displaying Data: Create a white list of acceptable characters to be outputted literally. Characters not within this white list shall be escaped, stripped, or HTML Entity Encoded (when applicable) before being displayed to the user. Can be utilized for web pages as well as command line and form based applications.
+
+* Using SQL: If the query can be modified by the user enforce using prepared statements (when applicable) and character whitelists to prevent sql injection.
+
+* Performing important application functionality: Perform proper session validation (authentication), and object access checking (authorization).
+
+When possible consider using existing frameworks such as the Java Validation Library for Java, XWork Validator for Java Struts, the JSTL for JSP, and Microsoft's anti-xss library (.NET) which have been battle tested in production environments. Existing frameworks are often designed with ease of use in mind and could make implementing the fix much simpler, and make adoption more likely. By utilizing existing, well known libraries issues relating to evasion and encoding may already be addressed saving you development time. The other advantage of utilizing an input validation framework is that if it contains a a bug, you may be able to fix it at a central location instead of at multiple locations throughout your application.
+
+Next you'll need to create a best practices document outlining how to address these risky tasks, and a short training course and Q/A session to address any concerns your development team may have. Emphasis on code management advantages, security check consistency, and development time savings is essential for developer acceptance. While the utilization of such a framework will initially add some development time, management and future code audits will become much easier to deal with. Last and certainly not least make the utilization of such a security framework a project requirement and instill consequences for not using it without a good reason. If it isn't in the requirements then some people within development may treat this as an optional step.
+In Closing
+
+Ensuring the appropriate level of development training on security issues is essential just like thousands of other people have stated in the past, however until your team is trained it's important to take into consideration how these developers will influence the development of your application. By providing them with the right tools for success, the requirements to use them, and the advantages of using them you can greatly improve the overall state of your application.
+
+Additional Reading
+
+Microsoft Anti-Cross Site Scripting Library V1.5
+JValid Java Validation Library
+Eradicate XSS Once and for All
+12/21/2006 The lack of security enabled frameworks is why we're vulnerable
+

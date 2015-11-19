@@ -1,0 +1,461 @@
+The Importance of Application Classification in Secure Application Development
+By Rohit Sethi
+
+Introduction
+As organizations race to integrate security into the software development process, they are realizing that many 
+security flaws can be fixed long before deployment. Industry experts are recognizing the need for application 
+security in all phases of the Software Development Life Cycle (SDLC), while related organizations such as the 
+Open Web Application Security Project (OWASP) and the Web Application Security Consortium (WASC) are growing in 
+popularity.  Furthermore, regulations such as the Payment Card Industry (PCI) initiative mandate that security be 
+entrenched in the development and product management lifecycles.
+
+With the hype surrounding secure applications, organizations may attempt broad adoption of secure development 
+principles.  Security as an architectural driver is often at the expense of performance (e.g. component redundancy), 
+usability (e.g. complexity of using the application) and cost (e.g. using SSL to implement HTTP requires PKI or third 
+party certificates, slows traffic, etc.).  Most development shops are having a tough time balancing all of these 
+factors. 
+
+Fortunately, there is a way to provide guidance in striking this balance.
+
+Finding the Security Balance
+In order to make effective decisions about security tradeoffs, architects and developers need to calculate the 
+confidentiality, integrity, and availability requirements of their applications.  In short, application classification 
+needs to precede secure application development.
+
+The author’s experience in the industry has shown that, while most organizations have policies covering data 
+classification, rarely do they have similar policies on application classification.  Developers and architects 
+often have to make assumptions about the sensitivity of the data that they are handling and make architectural 
+and design trade-offs based on these assumptions.  As an example, a developer with little background or interest 
+in risk may assume that gaining access to a credit card number without a corresponding expiry date does not pose 
+a threat -- and therefore avoids masking credit card numbers on screen in a marketing data application.  The 
+reality is that this is a violation of PCI rules and poses an unnecessary reputation and financial risk to the 
+company. 
+
+Conversely, an overly cautious architect may decide to encrypt all data in an accounting application because he deems 
+it to be sensitive when in fact the very same numbers are openly available to the entire enterprise. The architect is 
+protecting confidentiality where he should actually be focusing on the integrity of the data.  
+
+In the first case, the enterprise is being opened to an unnecessarily high level of risk due to a design decision; in 
+the second, the business is likely spending too much money and unnecessarily sacrificing performance due to an 
+architectural decision.
+
+Introducing Application Classification
+In order to help solve this problem, organizations should implement a strong application classification program 
+that is linked to application development.  Each application is rated “Low”, “Medium”, or “High” 
+on the metrics of Integrity, Availability, and Confidentiality (for definitions of these terms please consult (4)).  
+These ratings are linked with specific security requirements within the organization’s development standards.  
+
+For example, an application might have the following rating:
+
+Confidentiality: Low
+Integrity: Medium
+Availability: High
+
+This model is a derived from the Director of Central Intelligence Directive 6/3 (1). Rating values should be derived 
+from the value of the data that the application handles. Determining the given CIA ratings are beyond the scope of 
+this paper; readers seeking guidance on ratings should consult (1) and view data classification guidelines of other 
+organizations such as (2) and (3) (note that these are only useful in determining requirements for classification 
+levels).  Some organizations may wish to provide more granularity than “Low”, “Medium”, and “High” 
+(e.g. a scale of 1-5) in order to provide more fine-tuned guidance to the development team, but doing so increases 
+the subjectivity of a given rating and leaves room for debate about applicability of guidelines. 
+
+Case Study - Scenario
+In order to illustrate the concept of application classification this paper will examine a case study. Widgets 
+Incorporated is a medium-sized consumer goods company. They have determined the need to create I-Tracker: a 
+custom-built inventory tracking application to facilitate growing customer demand. The most common use case 
+will be for sales staff to enter data from a sales order which will automatically update the inventory levels 
+and alert the logistics staff to prepare the order for shipment. When the inventory level for a particular 
+widget drops below a certain threshold the manufacturing division will be notified. The main types of data 
+used in the application include inventory levels, customer IDs, sales orders numbers, descriptions of orders, 
+and product IDs.
+ 
+I-Tracker will be used by 30 internal users spread across the manufacturing, sales, and logistics departments, 
+and that number is anticipated to grow to as much as 100 in the next few years. The business has indicated that 
+the application may need to interface with a partner Widget Accessory supplier in the future. Widgets Incorporated 
+currently receive 50-60 orders per day and anticipates that number grow to around 150. 
+
+The development team has determined that I-Tracker will be a J2EE web-based application, using the Apache Struts 
+MVC framework on BEA Weblogic web and application servers with an Oracle database. Clients will use a standard 
+web browser to access the application. I-Tracker will receive data from the billing and shipping systems via 
+web services. This in turn means it will be using Apache Axis for SOAP functionality.
+
+Case Study – Application Classification
+Using internal guidelines based on documents such as (1), the I-Tracker application team produces the following 
+application classification:
+
+Confidentiality: Low
+All data in the application is readily available to anyone in the company. Sensitive financial data and client 
+private information are not handled by this application.
+
+Integrity: High
+Poor inventory and shipping tracking may result in significant financial loss to the company and may result in 
+customer dissatisfaction / loss of customers.
+
+Availability: Medium
+A major disruption of the application will cause a backlog in shipping and have some financial consequences to 
+the organization. Minor disruptions, however, can be tolerated as customers expect a 4-6 week delay in receiving 
+their goods. 
+
+
+Case Study – Design and Development
+The architects and developers of the I-Tracker set out to design the application. Using their internal guidelines 
+and the given classification, they make a number of decisions on security functionality. 
+
+Several policies and guidelines apply to all applications using this specific technology, regardless of 
+classification. For instance the following policy applies to all Struts based applications:
+
+Policy:
+Apache Validator
+
+Applies to:
+J2EE applications using Apache Struts with any of the following classifications:
+Confidentiality – Low, Medium, or High; OR
+Integrity – Low, Medium, or High; OR
+Availability– Low, Medium, or High
+
+Description
+All J2EE Applications employing the Apache Struts framework must implement the Apache Validator framework for 
+input validation unless another input validation routine is used to strip input of malicious characters. The 
+validation framework must, at a minimum, remove all known malicious characters that are not needed for business 
+use. When business requires the use of potentially dangerous characters, the application must safely handles 
+those characters using encoding techniques.  Please consult Information Security for a current list of known 
+malicious characters.
+
+This generic policy uses a technique known as “known-bad validation” or “blacklisting” to perform 
+input validation. This approach, while better than no input validation, is rarely sufficient for secure 
+applications due to the sheer variety of methods of injecting malicious strings (5). The following policy 
+supersedes the Struts Validator policy:
+
+Policy:
+Known Good Validation
+
+Applies to:
+All web applications any of the following classifications:
+Confidentiality –Medium, or High; OR
+Integrity –Medium, or High; OR
+Availability –Medium, or High; OR
+
+Description
+All web-based applications must employ either strict “known-good” validation (i.e. only allowing a 
+specific subset of characters, such as alphanumeric) or encoding using HTML character entity references on 
+all input from web users, such as HTTP parameters (including form fields and URL parameters), header-data, 
+and cookie values. 
+
+Notice how this policy applies to all applications except those with a “Low” value for each of C, I, 
+and A. This is because employing known-good validation or encoding often causes problems when trying to match 
+with data from a different application that does not have the same validation / encoding (e.g. a database join 
+operation).  However, if there are even moderate security requirements then the extreme danger presented by 
+malicious characters warrants more stringent validation.
+
+The I-Tracker development team chooses to use HTML Encoding using Java’s URLEncoder class (6) by applying 
+this encoding to all incoming data using a Servlet filter (7).
+
+Moving over to database connectivity, the team finds the following policies apply to their environment:
+
+Policy:
+No Dynamic SQL
+
+Applies to:
+All applications that connect with databases with any of the following classifications:
+Confidentiality – Low, Medium, or High; OR
+Integrity – Low, Medium, or High; OR
+Availability– Low, Medium, or High
+
+Description
+Dynamic SQL (i.e. using string literals and dynamically appending user input at runtime) may not be used. All 
+application SQL statements must use stored procedures or prepared statements (e.g.  parameterized queries in Java).
+
+
+Policy:
+Database connection pooling
+
+Applies to:
+All applications that connect with databases with any of the following classifications:
+Availability– Medium or High
+
+Description
+In order to ensure availability, applications must leverage database connection pooling wherever possible. This 
+is often offered as a service by an application server.
+
+
+Policy:
+Encrypted database passwords
+
+Applies to:
+All applications that connect with databases with any of the following classifications:
+Confidentiality – High; OR
+Integrity – High
+
+Description
+Passwords used for database connection strings must be stored in encrypted format. Consider using software or 
+hardware key stores or services such as DPAPI in .Net
+
+The development team takes note of these policies and makes the following adjustments to their design:
+•	All database calls will use Java Prepared Statements (8)
+•	Database connections will use WebLogic’s JDBC connection pooling (9)
+•	Database connection passwords will be stored in configuration files and encrypted using WebLogic’s Encrypt utility (10)
+
+ Next, the team uses cookies for session management and notices the following rules apply to their cookie usage:
+
+Policy:
+Random Session IDs
+
+Applies to:
+All session-oriented HTTP applications with any of the following classifications:
+Confidentiality –Medium, or High; OR
+Integrity –Medium, or High
+
+Description
+Session identifiers must be created using Cryptographically Strong Number Generators. Pseudo random-number 
+generators such as java.util.Random may NOT be used for this purpose. If possible, consider leveraging the 
+facility of the application server such as JSessionID or ASPSessionID. 
+
+
+Policy:
+Authenticated Session Refresh
+
+Applies to:
+All session-oriented HTTP applications with any of the following classifications:
+Confidentiality –Medium, or High; OR
+Integrity –Medium, or High
+
+Description
+In order to prevent session fixation attacks the application must provide a new authenticated session identifier 
+after the user authenticates. This session identifier must be different from the one used to prior to authentication.
+
+
+
+Policy:
+Secure Cookies
+
+Applies to:
+All session-oriented HTTP applications with any of the following classifications:
+Confidentiality –Medium, or High; OR
+Integrity –Medium, or High
+
+Description
+All cookies containing authenticated session identifiers must include the secure and HTTPOnly tags. These 
+cookies must be sent over an encrypted channel (e.g. SSL). 
+
+Taking these policies into account the development team makes the following design decisions:
+•	Use WebLogic’s session management (11)
+•	Configure the application to use SSL during the entire authenticated session
+•	Use separate session identifiers prior to authentication and after authentication on the application
+•	Since HTTPOnly is not supported by the J2EE standard (at the time of creation of this application), 
+	the individual cookie header values for Secure and HTTPOnly will be set manually (i.e. not within the application server)
+
+
+Finally, they notice the following policies apply to their use of web services:
+
+Policy:
+XML Bounds Checking
+
+Applies to:
+All Web Service applications with any of the following classifications:
+Availability– Medium or High
+
+Description
+Every XML element MUST have a pre-defined maximum character length defined. Additionally, a maximum size for the 
+entire SOAP message should be enforced by the server or a security appliance / firewall. 
+
+
+Policy:
+Generic SOAP faults
+
+Applies to:
+All Web Service applications with any of the following classifications:
+
+Confidentiality– Medium or High; OR
+Integrity– Medium or High; OR
+Availability– Medium or High
+
+Description
+Detailed exception messages should not be included in SOAP faults. Instead, generic messages should be sent.
+
+Taking these policies into account the development team makes the following changes to the application:
+•	Define maximum character lengths for all elements in the WSDL using XSD type restrictions (12)
+•	Set the HTTP Max Message Size to 4096 in WebLogic (13) 
+•	Set the “axis.development.system” attribute to “false” in Apache Axis (this indicates that 
+	error messages will not be propagated to remote machines by default) (14)
+
+Case Study – Summary
+
+In an actual scenario there would be many more policies, but the case study illustrates how application 
+classification results in clear guidance for secure application development. The I-Tracker team made decisions 
+that impact the design, programming, and configuration of the application. Instead of adopting all security 
+policies they applied only the ones that made sense given the application classification. While the end result 
+may not be a 100% secure application, it will likely be significantly more secure than the majority of web 
+applications being deployed today (15, 16).
+
+It should also be noted that while these policies cover secure application development, there are many other 
+components not covered that contribute to the application’s overall security, including (but not limited to):
+
+•	Web server hardening (17, 18)
+•	Application server hardening (19, 20) (note that some of these will be covered in development guidelines 
+	due to tight coupling between application logic and application server services)
+•	Network/infrastructure security for devices involved in the application (21)
+•	Developer awareness training
+•	Patch management (22)
+•	PKI infrastructure (23)
+
+Creating Policies
+While there is no clear, industry-accepted list of application security development policies, there are several 
+resources that an organization can use to create their own list. OWASP’s Web Application Security Standards 
+Project (24), which is still in development, promises to offer a solid starting point for policies. In the meantime, 
+organizations should consider using the OWASP guide (15) and secure development books (25) as a baseline for the kinds 
+of features they need to apply to secure their web applications. Organizations should also leverage the Common Weakness 
+Enumeration (26) dictionary for a list of commonly known web application security vulnerabilities and their associated 
+fixes. 
+
+In order to provide maximum value to architects and developers, applications should be classified by a group with 
+representation from at least the line of business, developers, and information security.  Classification decisions 
+should be documented and available to all people involved in the development process. The team must take into account 
+cost, legal/industry/regulatory obligation, risk tolerance, and security posture when classifying data.  As business 
+environments change, classification ratings should be re-evaluated periodically and changes should be incorporated 
+into new releases of the applications. It’s worth noting that these guidelines are also important for outsourced 
+application development initiatives. With limited insight into the client’s culture, risk appetite, environment, 
+and industry, outsourcers are at even greater risk of making incorrect assumptions about the confidentiality, 
+integrity, and availability requirements of applications. 
+
+
+Secure Defaults
+Security policies are effective in disseminating security knowledge to developers, but in reality developers in 
+some organizations may partially ignore or will not fully understand security policies. One way to alleviate the 
+problem is for the application security team to define code and configuration files that adhere to some of the most 
+common security policies. For example, Widgets Inc. from the case study could provide the following artifacts to 
+ease secure application development:
+
+•	Java code that adds HTTPOnly flags to a given cookie
+•	Struts configuration with known-good validation turned on and configured for all forms
+•	WebLogic configuration files with encrypted passwords, container-managed sessions, database connection 
+	pooling, and maximum allowable HTTP message length pre-configured
+•	Apache Axis configuration files that disable verbose error messages
+
+While these artifacts will not apply for all application classifications, they can be used for the most common 
+scenarios (e.g. “Medium” for all CIA attributes). Developers can then increase or decrease the level of 
+security according to their application. If feasible, consider providing a set of resources for different 
+classifications (e.g. use set A if your application has C-Medium, I-High, A-Medium; use set B if your application 
+has C-High, I-High, A-High, etc.). This also has the added benefit of speeding up development time since developers 
+will not have to create/configure these security features themselves.
+
+Rolling Out Classification
+As security training and awareness programs evolve, their focus is extending beyond end users and is becoming 
+increasingly geared towards systems and application developers. These training programs provide the perfect vehicle 
+for rolling out the application classification guidelines to development teams. 
+
+Too Much Overhead?
+To some, application classification may seem like unnecessary overhead in an SDLC already riddled with red-tape.  
+While this may slow down development, the benefits are too resounding to be ignored.  As the focus of security 
+shifts from infrastructure to application, the demands on applications to be secure and compliant can only increase. 
+Application security experts often hear complaints from developers that they have conflicting demands from their 
+business units and information security; using application classification forces the business and security to agree 
+upon a sufficient level of protection for the application without placing the burden of decisions on the development 
+team.
+
+Exceptions to the Rules
+Some developers will almost certainly point out that broad policies do not apply to their specific application for 
+some reason (e.g. “We don’t have to worry about strong authentication procedures if we only have 12 internal 
+trusted users”).  In those cases have an exception process that documents the reasons why a specific policy will 
+not apply to that particular application.
+
+Smart Security Spending
+With pushes from SOX, PCI, HIPAA, GLBA and other regulations driving large investments in security, organizations may 
+be tempted to implement excessive security controls into their systems. These controls, however, often come at the 
+expense of usability and performance and (depending on how the application is used) may even result in loss of 
+productivity/revenue – not to mention drawing the ire of the application’s users. Application classification 
+and other risk-based activities such as threat modeling ensure that performance, usability, and financial resources 
+are not consumed unnecessarily. Linking application development to application classification allows the enterprise 
+to make prudent investments in time and capital while still effectively mitigating risk.
+
+Rohit Sethi is manager of professional services at Security Compass, an information security firm specializing in 
+Application Security consulting and training. He can be reached at rohit [a-t] securitycompass.com
+
+
+(1)	Director of Central Intelligence Directive 6/3: Protecting Sensitive Compartmented Information Within 
+Information Systems
+http://www.fas.org/irp/offdocs/DCID_6-3_20Manual.htm
+
+(2)	Stanford University Data Classification Guidelines
+http://www.stanford.edu/group/security/securecomputing/dataclass_chart.html
+
+(3)	University of Massachusetts Data and Computing Standards
+http://media.umassp.edu/massedu/policy/DataComputingStandard.pdf
+
+(4) An Introduction to Computer Security – The NIST Handbook
+http://csrc.nist.gov/publications/nistpubs/800-12/800-12-html/index.html
+
+(5) OWASP Data Validation Guide	
+http://www.owasp.org/index.php/Data_Validation
+
+(6) J2SE 1.4.2 URLEncoder Class
+ 	http://java.sun.com/j2se/1.4.2/docs/api/java/net/URLEncoder.html
+
+(7)The Essentials of Filters 
+http://java.sun.com/products/servlet/Filters.html 
+
+(8) J2SE 1.4.2 PreparedStatement Interface 
+http://java.sun.com/j2se/1.4.2/docs/api/java/sql/PreparedStatement.html
+
+(9) BEA WebLogic Server and WebLogic Express 8.1 Documentation - Configuring and Using WebLogic JDBC
+ 	http://e-docs.bea.com/wls/docs81/jdbc/programming.html#1053561
+
+(10) BEA WebLogic Server and WebLogic Express 8.1 Documentation – Using the Weblogic Server Java Utilities
+http://e-docs.bea.com/wls/docs81/admin_ref/utils17.html
+
+(11) BEA WebLogic Server and WebLogic Express 8.1 Documentation – Using Session and Session Persistence
+http://e-docs.bea.com/wls/docs92/webapp/sessions.html#wp100659
+
+(12) W3C Recommendation - XML Schema Part 2: Datatypes Second Edition
+http://www.w3.org/TR/xmlschema-2/#rf-length
+
+(13) BEA WebLogic Server and WebLogic Express 8.1 Documentation – Configuring Web Server Functionality for Weblogic Server
+http://e-docs.bea.com/wls/docs81/adminguide/web_server.html#111290 
+
+(14) Apache Axis Reference Guide
+http://ws.apache.org/axis/java/reference.html
+
+(15) SANS Top-20 Internet Security Attack Targets (2006 Annual Update)
+http://www.sans.org/top20/?ref=1697#c1
+
+(16) OWASP Guide Project
+http://www.owasp.org/index.php/Category:OWASP_Guide_Project
+
+(17)Microsoft Windows Server 2003 Security Guide http://www.microsoft.com/technet/security/prodtech/windowsserver2003/w2003hg/sgch00.mspx
+
+(18) Securing Apache: Step-by-Step	 
+http://www.securityfocus.com/infocus/1694
+
+(19) IBM WebSphere Application Server: Security presentation series
+ http://www-128.ibm.com/developerworks/websphere/library/techarticles/0409_botzum/0409_botzum.html
+
+(20) BEA WebLogic Server and WebLogic Express 8.1 Documentation – Security
+ http://edocs.bea.com/wls/docs81/security.html
+
+(21) NIST Guideline on Network Security Testing
+http://csrc.nist.gov/publications/nistpubs/800-42/NIST-SP800-42.pdf
+
+(22) NIST Creating a Patch and Vulnerability Management Program  
+http://csrc.nist.gov/publications/nistpubs/800-40-Ver2/SP800-40v2.pdf
+
+(23) NIST Introduction to Public Key Technology and the Federal PKI Infrastructure
+http://csrc.nist.gov/publications/nistpubs/800-32/sp800-32.pdf
+
+(24) OWASP WASS Security Frame Guide
+http://www.owasp.org/index.php/Category:WASS_Security_Frame
+
+(25) Secure Development Books
+http://books.google.com/books?as_q=owasp
+
+(26) Common Weakness Enumeration
+ 	http://cwe.mitre.org/
+
+
+
+The current copy of this document can be here:
+http://www.webappsec.org/projects/articles/
+
+Information on the Web Application Security Consortium's Article Guidelines can be found here:
+http://www.webappsec.org/projects/articles/guidelines.shtml
+
+A copy of the license for this document can be found here:
+http://www.webappsec.org/projects/articles/license.shtml

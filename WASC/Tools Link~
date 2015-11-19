@@ -1,0 +1,123 @@
+http://projects.webappsec.org/w/file/94619066/Owasp-honeypot-v1.zip
+
+https://www.rapid7.com/products/appspider/
+
+http://www8.hp.com/us/en/software-solutions/webinspect-dynamic-analysis-dast/
+
+
+
+
+
+#Web Application Security Scanner List 
+
+
+
+				Commercial Tools
+
+						    Acunetix WVS by Acunetix
+						    AppScan by IBM
+						    Burp Suite Professional by PortSwigger
+						    Hailstorm by Cenzic
+						    N-Stalker by N-Stalker
+						    Nessus by Tenable Network Security
+						    NetSparker by Mavituna Security
+						    NeXpose by Rapid7
+						    NTOSpider by NTObjectives
+						    ParosPro by MileSCAN Technologies
+						    Retina Web Security Scanner by eEye Digital Security
+						    WebApp360 by nCircle
+						    WebInspect by HP
+						    WebKing by Parasoft
+						    Websecurify by GNUCITIZEN
+
+     
+
+	                       Software-as-a-Service Providers
+
+						    AppScan OnDemand by IBM
+						    ClickToSecure by Cenzic
+						    QualysGuard Web Application Scanning by Qualys
+						    Sentinel by WhiteHat
+						    Veracode Web Application Security by Veracode
+						    VUPEN Web Application Security Scanner by VUPEN Security
+						    WebInspect by HP
+					 	    WebScanService by Elanize KG
+
+ 
+
+			       Free / Open Source Tools
+
+						    Arachni by Tasos Laskos
+						    Grabber by Romain Gaucher
+						    Grendel-Scan by David Byrne and Eric Duprey
+						    Paros by Chinotec
+							Andiparos
+							Zed Attack Proxy
+						    Powerfuzzer by Marcin Kozlowski
+						    SecurityQA Toolbar by iSEC Partners
+						    Skipfish by Michal Zalewski
+						    W3AF by Andres Riancho
+						    Wapiti by Nicolas Surribas
+						    Watcher by Casaba Security
+						    WATOBO by siberas
+						    Websecurify by GNUCITIZEN
+						    Zero Day Scan
+
+						 
+#Static Code Analysis List 
+
+
+
+			Commercial Tools
+
+					    Checkmarx by Checkmarx
+
+					    CodeSecure by Armorize 
+
+					    CodeSonar by Gammatech
+
+					    CoveritySave by Coverity
+
+					    HP Fortify Source Code Analyzer by HP
+
+					    IBM Rational AppScan Source Edition by IBM
+
+					    Klocwork Insight by Klocwork 
+
+					    Development Testing Platform by Parasoft
+
+					    bugScout by buguroo
+
+					    ECLAIR by BUGSENG 
+
+					    ThreadSafe by Contemplate 
+
+ 
+
+		        Software-as-a-Service Providers
+
+					    Fortify on Demand by Fortify HP 
+					    Sentinel Source by Whitehat 
+					    Veracode  
+					    CXCloud by Checkmarx 
+
+ 
+
+                        Free / Open Source Tools
+
+					    FindBugs
+					    FxCop
+					    Lint
+					    OWASP O2 Platform 
+					    PMD
+					    PreFast 
+					    RATS – Rough Auditing Tool for Security 
+					    Yasca 
+					    VisualCodeGrepper 
+
+
+
+
+
+
+

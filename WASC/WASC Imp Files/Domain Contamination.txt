@@ -1,0 +1,556 @@
+                    Domain Contamination
+
+
+                 Amit Klein, February 2006
+
+
+Version: 0.6
+Last-Modified: January 31st, 2006
+
+
+Abstract
+========
+
+This brief write-up describes an attack that exploits an inherent 
+flaw of the client-side trust model in the context of cyber-
+squatting and domain hijacking, or in general, in the context of 
+obtaining temporary ownership of a domain (or major parts of it, 
+e.g. defacing the main page). Put simply, the idea explored is to 
+force long term caching of malicious pages in order for them to 
+still be in effect even when the domain returns to its rightful 
+owner. Various attack vectors are discussed, as well as possible 
+protection techniques. While previous works hinted at the 
+possibility of such attack, it is worthwhile to discuss this 
+attack in depth and to refute the common misconception that 
+cyber-squatting, domain hijacking and similar attacks do not have 
+long lasting effect.
+
+
+Audience
+========
+
+Since part of the material is considered to be of certain 
+novelty, yet is not too technical or too obscure, the audience 
+comprises of:
+-	Security experts
+-	Sys Admins
+-	Management
+-	Developers
+
+
+Introduction and background
+===========================
+
+Of interest to this write-up is a scenario wherein a domain (the 
+example that will serve us throughout this write-up is 
+"vuln.site") is temporarily under the control of an attacker. 
+That is, the attacker is able to serve (or to cause serving) the 
+entry point to the web site (denoted as "home page") of a host 
+(or several hosts) in the given domain (e.g. www.vuln.site, with 
+home page defined to be http://www.vuln.site/). Until today, the 
+assumption was, that once the attack is over, i.e. once the 
+domain is (back) in control of its rightful owner, or when the 
+defaced home page is restored to its original form, the attack is 
+over and practically no long terms effects remain. This write-up 
+shows that a sophisticated attacker can inflict long lasting 
+damage that takes effect long after the domain/page is restored. 
+This direction is hinted in [1], [2] and [3], but until this 
+write-up, was not fully discussed.
+
+The prerequisite for this attack is therefore that an attacker 
+can fully control the content of the "home page" (or any other 
+popular page) on a host in the domain.
+This can be achieved via the following attacks:
+
+Cyber-squatting: the attacker registers a domain that would later 
+be transferred to another party (either by that party filing 
+claims on the domain, or by selling the domain).
+
+Domain hijacking: the attacker gets hold of a domain already 
+registered for another party, using an attack such as social 
+engineering, hacking DNS servers, or DNS cache poisoning.
+
+Defacement: the attacker hacks into a server that hosts a website 
+in the domain, and replaces the content of the main page with 
+his/her own version.
+
+Web cache poisoning: the attacker can place poisoned versions of 
+the home page of www.vuln.site in various web cache servers (see 
+[1] and [3]).
+
+
+Attack outline
+==============
+
+The attack is pretty simple: the attacker, once gaining control 
+of the domain, entices as many clients to browse to the malicious 
+page (http://www.vuln.site/). This page will be served by the 
+attacker in such manner that it will be cached for as long as 
+possible by the clients (browsers, possibly also proxy servers 
+through which the clients surf the web, possibly also any reverse 
+proxy employed by the site, any forward proxy that the attacker 
+has access to, and of course, any cache server the attacker 
+poisons in order to realize the attack).
+
+Caching is controlled via either explicit HTTP headers, or HTML 
+META tag virtual HTTP headers. In any case, including the 
+following headers would make the data cacheable for a long time:
+
+Cache-Control: public
+Expires: Wed, 01 Jan 2020 00:00:00 GMT
+Last-Modified: Fri, 01 Jan 2010 00:00:00 GMT
+
+Now that http://www.vuln.site/ is cached "forever" at the browser 
+with malicious content, this content will be rendered each time 
+the browser is pointed at http://www.vuln.site/ even after the 
+domain or server content is restored. This was verified with MSIE 
+6.0 SP2.
+
+To illustrate what can be done, consider a simple HTML page that 
+loads Javascript code from the attacker's server:
+
+<html>
+<body>
+<script src="http://www.evil.site/attack.js"></script>
+</body>
+</html>
+
+As long as the domain/server remains in the hands of the 
+attacker, the script contents, http://www.evil.site/attack.js, 
+may be dormant (do nothing), or even subtler, e.g. redirect the 
+victim to another site, e.g. a genuine one owned by the same 
+organization that is (or will be) the owner of vuln.site. Once 
+vuln.site is transferred to its rightful owner, the attacker can 
+switch http://www.evil.site/attack.js to perform malicious 
+activities, as will be discussed below.
+
+
+Numerous options
+================
+
+Once the attacker has a cached page in the vuln.site domain in 
+the victim's browser (or proxy server), which is likely to be the 
+first page loaded by the victim, the attacker can mount several 
+attacks:
+
+-	Information/credential stealing
+
+The attacker can record cookies that the victim has in the 
+vuln.site domain (more accurately, those accessible to the 
+scope in which the malicious page resides). So each time 
+the victim loads the cached page, the attacker's script 
+will collect the cookies, send them to www.evil.site, and 
+redirect the victim to 
+http://www.vuln.site/?random_string_here. This will ensure 
+that the victim will immediately receive the home-page as 
+intended to be rendered, from the www.vuln.site server.
+
+Likewise, it's possible for the attacker to keep a 
+small/invisible window, while redirecting the main window 
+to http://www.vuln.site/?random_string_here. Then, the 
+attacker can collect cookies and read data off pages (from 
+www.vuln.site only) throughout the victim's session.
+
+-	Setting cookies and Session fixation attack
+
+The script can set permanent cookie that will expire long 
+into the future. This allows some forms of attacks through 
+cookies, as well as the session fixation attack [4]. An 
+interesting idea is to set a permanent cookie with a random 
+name (set at the browser side) - it will be very hard to 
+delete this cookie (unless the browser is instructed to 
+delete all cookies). If the server attempts to read or 
+parse all cookies, such poison cookie may come into play.
+
+It should be noted that this kind of attack (setting 
+cookies) is possible even in weaker attacks, such as cross 
+site scripting and response header manipulation via CRLF 
+injection.
+
+-	Man-In-The-Middle
+
+The attacker can load original content from the real 
+website (www.vuln.site) inside a frame, changing the HTML 
+page before it is rendered, and as such implement a man-in-
+the-middle attack (the malicious Javascript code and the 
+malicious cache page serve as the man-in-the middle in this 
+case). Note that by using the XmlHttpRequest object, the 
+attacker can get hold of the raw HTML data before it is 
+rendered by the browser - this renders some defense 
+mechanisms useless.
+
+
+Attack Longevity
+================
+
+The attack "lives" in various cache repositories. As such, every 
+attempt by the cache operator to revalidate the poisoned cache 
+(by sending a conditional request) may jeopardize the attack (for 
+this particular cache repository).
+
+Certain cache proxy servers may revalidate a fresh cache entry 
+from time to time. 
+Also, Microsoft's documentation for the default cache settings in 
+Microsoft Internet Explorer ("Check for newer versions of stored 
+pages" set to "Automatically") is inconsistent regarding whether 
+cached resources are validated (using a conditional request, 
+using If-Modified-Since and/or If-None-Match). According to [5], 
+no such validation occurs for fresh cache entries, even if long 
+time has elapsed. According to [6], validation is likely to occur 
+for HTML resources if more than a day has elapsed since they were 
+last fetched/validated. The author's experiments tend to agree 
+with [5], i.e. that MSIE will generally not validate the cached 
+resource (at least not when an Expires header is provided with a 
+date set to the far future), and use it directly from its cache, 
+although an occasional validation request was observed 
+(infrequently).
+
+Furthermore, a browser user may actively cause a cache 
+revalidation, e.g. by pressing the Refresh button. 
+
+Finally, a browser user may configure the browser to revalidate 
+the cached pages on every browser session or on every usage (see 
+[6]).
+
+It is, therefore, in the best interest of the attacker not to 
+include an ETag response header with the poisoned page, and set 
+the Last-Modified date to a date in the far future (as in the 
+above example). This will cause the browser to send revalidation 
+requests only with "If-Modified-Since" (not with "If-None-
+Match"), and if the genuine resource has a modification date 
+earlier than the one provided by the browser (which is the normal 
+scenario), the web server will respond with a "304" response 
+status ("unmodified"), thus instructing the browser to further 
+retain the poisoned page. However, if the attacker prefers 
+stealth-ness, then the response should copy the genuine page's 
+Last-Modified and/or ETag values, if such page exists.
+
+Of course, a browser user can simply erase all the cache directly 
+(modern browsers enable this in one click), or indirectly 
+(Microsoft Internet Explorer has an option to erase the cache 
+upon exiting the browser - this option, called "Empty Temporary 
+Internet Files folder when browser is closed" is turned on by 
+default for Windows/2003. see [7]). In such case, the attack on 
+this browser will be undone as of the moment the cache was 
+erased.
+
+
+Pre-Attack Defenses
+===================
+
+*       If possible, use SSL only (HTTPS only) access to the web 
+site. SSL thwarts those 
+attacks in which the attacker has no access (direct or 
+indirect) to a valid SSL certificate for the host/domain. 
+So DNS hijacking and web cache poisoning are covered, while 
+classic defacement is still a problem, and possibly cyber-
+squatting too (if the attacker is issued a valid 
+certificate).
+
+*	Just in case proxy servers and/or clients occasionally 
+attempt to revalidate the poisoned page, it would be a good 
+idea to never respond with an HTTP status 304, i.e. force 
+an HTTP status 200, on each entry point page in the domain. 
+It also makes sense to monitor the values of last 
+modification and ETag provided (via If-Modified-Since and 
+If-None-Match respectively) and if they do not match the 
+values historically provided for this resource, it may 
+indicate an attack in progress.
+
+For some popular web servers, there are ready made 
+facilities to force the server to ignore the If-Modified-
+Since HTTP request header. To quote from [2] (with the 
+generous permission of its author, Mitja Kolsek):
+
+  Internet Information Services
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  We [Mitja Kolsek/ACROS Security - A.K.] wrote a 
+  simple, minimum overhead ISAPI filter (24 lines of 
+  code) that intercepts browsers' requests and removes 
+  any "If-Modified-Since" headers from it. The filter is 
+  available on our web site at 
+  http://www.acrossecurity.com/aspr/misc/if-modified-
+  since-eliminator.zip (Visual C++ project)
+
+  [Remember to always review the source code before 
+  using it!]
+
+  Apache 1.3
+  ~~~~~~~~~~
+  Edi Weitz from Germany wrote a simple Apache module 
+  called mod_header_modify, specifically intended for 
+  changing incoming HTTP headers. This module can be 
+  used for eliminating "If-Modified-Since" headers from 
+  incoming requests using the following directives in 
+  httpd.conf:
+
+  HeaderModify on
+  HeaderModifyRemove If-Modified-Since
+
+  mod_header_modify module can be downloaded from 
+  http://weitz.de/mod_header_modify.html
+  Note: Apache must be built with DSO support.
+
+  [Remember to always review the source code before 
+  using it!]
+
+  Apache 2.0
+  ~~~~~~~~~~
+  Apache 2.0 already comes with mod_headers module. 
+  Rebuild Apache with this module included and use the 
+  following directive in httpd.conf:
+
+  RequestHeader unset If-Modified-Since
+
+It is advised to treat the If-None-Match HTTP request 
+header in the same manner.
+
+
+Post-Attack Defenses - The active approach
+==========================================
+
+The assumption in this section is that the rightful owner of the 
+domain is aware that such attack is taking place, either before 
+the domain is restored, or soon thereafter. Furthermore, the site 
+owner can contact all (or the vast majority) of the clients, e.g. 
+via email.
+
+The site owner needs to send an email to the clients, instructing 
+them to click on a link. This link would be to a page untouched 
+by the attacker (yet on the same host), which will refresh the 
+URL that the attacker used (see above). The site owner can use 
+XmlHttpRequest (via Javascript) to force refreshing both the 
+browser and the proxy server caches. This can be done via a code 
+(in http://www.vuln.site/new_page.html) such as this (assuming 
+Microsoft Internet Explorer, tested with MSIE 6.0 SP2):
+
+<html>
+<body>
+<script>
+var x = new ActiveXObject("Microsoft.XMLHTTP");
+x.open("GET","http://www.vuln.site/",false);
+x.setRequestHeader("If-None-Match","some-random-string");
+x.setRequestHeader("Cache-Control","no-cache,max-age=0");
+x.setRequestHeader("Pragma","no-cache");
+x.send();
+</script>
+</body>
+</html>
+
+The first header, If-None-Match (with a random string) ensures 
+that the browser doesn't load the data from its own cache, but 
+rather, really attempts to fetch the data. The two cache headers 
+(Pragma and Cache-Control) will then invalidate any cached entry 
+in a cache server (at least the ones researched in [1]).
+
+Another option, inferior to the above, is to use the HTTP Refresh 
+header. In this case the server response for 
+http://www.vuln.site/new_page.html should include the following 
+HTTP response header:
+
+Refresh: 0; URL=http://www.vuln.site/
+
+The Refresh header forces the browser to refresh its cache from 
+the server. The server (www.vuln.site) must be configured to 
+return the legitimate copy of http://www.vuln.site/ 
+unconditionally (that is, never to return an HTTP 304 response 
+code for this resource).
+
+Microsoft Internet Explorer, for example, even emits a "Pragma: 
+no-cache" HTTP request header, together with the request 
+(verified with MSIE 6.0 SP2). This may remove the cached entry 
+from some cache servers.
+
+Alternatively, the email may urge the user to manually erase the 
+browser cache.
+
+
+Post-Attack Defenses - The passive approach
+===========================================
+
+The assumption in this section is that the rightful owner of the 
+domain is aware that such attack is taking place, either before 
+the domain is restored, or soon thereafter. However, the site 
+owner cannot contact clients directly, and needs to wait for them 
+to browse to the site.
+
+In this case, a good idea is to shut down any external web-site 
+that the malicious cached page loads data/script from (in the 
+example above, www.evil.site). This simplifies the analysis of 
+the problem. However, it is not always practical, and even so, 
+some forms of attacks may be self contained and not require 
+external sites.
+
+Now, there are two problems that need to be handled:
+1.	The cached page
+2.	Any cookies set by the cached Page
+
+The first step would be to remove the cached page from victims. 
+If we assume that at one point, the cached page does allow (or 
+initiate) a client interaction with www.vuln.site, e.g. going to 
+a page such as http://www.vuln.site/?random_string_here, then 
+this page should be modified to use one of the methods discussed 
+in the previous section.
+
+Note though that if the malicious page does not load the target 
+page (http://www.vuln.site/?random_string_here) directly, but 
+rather, uses XmlHttpRequest to get hold of the information in the 
+page, then those methods are useless (including the Refresh 
+trick), since the browser (at least in Microsoft Internet 
+Explorer) in this case ignores the Refresh header and provides 
+the page to the XmlHttpResponse object as-is.
+
+Of course, if the malicious page reads Javascript code (or data 
+that can affect code flow) from an external site such as 
+http://www.evil.site/attack.js, and this site cannot be shut 
+down, then it's a cat-and-mouse game between the rightful site 
+owner and the attacker - in response to the above technique, the 
+attacker can change the page to which the cached page redirects, 
+and so forth. The attacker may in fact instruct the page not to 
+load any page from the real site.
+
+This is why it's important to analyze the attack and ensure that 
+any sites/resources it reads data from are first shut down (this 
+may be impractical in case the attacker goes through the pain of 
+communicating with a blog-site/forum/... e.g. using talk-backs and 
+comments).
+
+
+Post-Attack Defenses - a general method
+=======================================
+
+If the attack happens to involve (or to comprise solely of) 
+poisoned pages which are not entry points, meaning, pages that 
+are accessed via a flow that involves genuine pages from the web-
+site, then the flow can be easily modified to circumvent using 
+the exact URLs of poisoned pages.
+
+For example, if the site has http://www.vuln.site/ immediately 
+redirecting the browser to http://www.vuln.site/app/index.html, 
+and if only the latter page is poisoned, then the owner of the 
+site needs simply to change the redirection into, say, 
+http://www.vuln.site/app/index.html?foo=random_string_here.
+Alternatively, the owner can change the /app folder into 
+something like /app_random_string_here, and redirect to 
+http://www.vuln.site/app_random_string_here /index.html
+As long as these modifications cannot be predicted by the 
+attacker (hence the use of a random string), this defense method 
+should be easy to implement. 
+
+
+Post-Attack Defenses - Taking Care of the Cookies
+=================================================
+
+After the malicious pages are removed from the browser's cache, 
+the cookies that were set by the malicious page (if such cookies 
+were set) need to be removed.
+
+Any cookies set by the malicious page should ideally be deleted 
+immediately (this can be done at the HTTP level or at the 
+Javascript level, from any page on the same directory with the 
+malicious page). If the full list is not known, then at least the 
+set of cookies in used by the domain should be inspected 
+carefully by any page before being used, and preferably be reset 
+to a known safe configuration.
+
+Another option is to ask the user to delete all cookies (this can 
+be part of the email language, see above).
+
+
+Thoughts about Generic Solutions
+================================
+
+It may be a good idea to introduce one or more of the following 
+techniques to the server-cache-browser world:
+*	Forced cache invalidation (complete/per-URL/per-domain) 
+from the server, through the proxy, to the client. Ditto 
+with cookies. Possible problems: should cache server 
+"remember" this setting and serve it to clients at a later 
+time? Also, what about domains and hosts which are owned by 
+multiple entities?
+*	Domain versioning - the server will tag each response with 
+a version number/string, this will automatically invalidate 
+all cached data and cookies tagged with a different 
+version. Again, what about domains and hosts that are not 
+owned by a single entity?
+
+
+Summary
+=======
+
+In essence, the write-up demonstrates that defacement, domain 
+hijacking, web cache poisoning and cyber-squatting, all have long 
+term effect which may extend well after the web site is restored. 
+This concept may be denoted as "domain contamination". The root 
+cause is the fact that the client side domain security model 
+takes the approach of "all or nothing" - if a resource arrives 
+from the target domain, it is blindly and completely trusted (as 
+belonging to the domain, and having the ability to access and set 
+other domain resources) - forever, and without a simple 
+revocation mechanism. A sophisticated attacker can exploit this 
+flaw to mount various attacks (such as cross site scripting, 
+session fixation, credentials scrapping, etc.) against users of 
+the site whose browser/proxy server is affected. Defense against 
+this technique is not trivial, and may depend on the 
+sophistication of the attack, as well as on whether affected 
+clients can be communicated with, and whether they are co-
+operative enough.
+
+
+References
+==========
+
+[1] "Divide and Conquer - HTTP Response Splitting, Web Cache 
+Poisoning Attacks, and Other Topics", Amit Klein, March 4th, 2004
+http://www.packetstormsecurity.org/papers/general/whitepaper_http
+response.pdf
+
+[2] "ASPR #2004-10-13-1: Poisoning Cached HTTPS Documents in 
+Internet Explorer", Mitja Kolsek (Acros Security), October 13th, 
+2004
+http://www.acrossecurity.com/aspr/ASPR-2004-10-13-1-PUB.txt
+
+[3] "HTTP Request Smuggling", Chaim Linhart, Amit Klein, Ronen 
+Heled, Steve Orrin, June 6th 2005
+http://www.watchfire.com/resources/HTTP-Request-Smuggling.pdf
+
+[4] "Session Fixation Vulnerability in Web-based Applications", 
+Mitja Kolsek (Acros Security), December 18th, 2002
+http://www.acrossecurity.com/papers/session_fixation.pdf
+
+[5] "Fiddler PowerToy - Part 2: HTTP Performance" (sub-section 
+"Conditional Requests and the WinInet Cache"), Eric Lawrence 
+(Microsoft Corporation), June 2005
+http://msdn.microsoft.com/library/en-
+us/dnwebgen/html/ie_introfiddler2.asp?frame=true#ie_introfiddler2
+_topic4
+
+[6] "How Internet Explorer Cache Settings Affect Web Browsing" 
+(sub-section "Description of the Cache Settings"), Microsoft 
+Knowledge Base article 263070
+http://support.microsoft.com/default.aspx?scid=kb;en-
+us;263070#XSLTH3125121122120121120120
+
+[7] "Enhanced Security Configuration for Internet Explorer" (sub-
+section "Advanced Settings"), Microsoft MSDN article 
+http://msdn.microsoft.com/workshop/security/szone/overview/esc_ch
+anges.asp
+?frame=true#secure_advanced
+
+
+About the author
+================
+
+Amit Klein is a renowned web application security researcher. Mr. 
+Klein has written many research papers on various web application 
+technologies--from HTTP to XML, SOAP and web services--and 
+covered many topics--HTTP request smuggling, insecure indexing, 
+blind XPath injection, HTTP response splitting, securing .NET web 
+applications, cross site scripting, cookie poisoning and more. 
+His works have been published in Dr. Dobb's Journal, SC Magazine, 
+ISSA journal, and IT Audit journal; have been presented at SANS 
+and CERT conferences; and are used and referenced in many 
+academic syllabi. 
+
+Mr. Klein is a WASC (Web Application Security Consortium) 
+officer. 
